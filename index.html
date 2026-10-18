@@ -43,8 +43,8 @@ dialog{width:min(620px,calc(100% - 28px));max-height:88dvh;overflow:auto;backgro
 <label>Nom de la recette<input id="recipe-name" required maxlength="100"></label>
 <div class="form-grid"><label>Catégorie<select id="recipe-category"><option value="0">Pâtes sauce tomate</option><option value="1">Pâtes crème fraîche</option><option value="2">Riz en sauce</option></select></label><label>Temps total en minutes<input id="recipe-time" type="number" min="1" max="300" required value="25"></label></div>
 <p class="form-note">Toutes les quantités sont pour <strong>4 portions</strong>. Pâtes et riz pesés secs, conserves pesées égouttées.</p>
-<h3>Ingrédients</h3><div id="ingredient-rows"></div><button type="button" class="text-btn" id="add-row">+ Ajouter une ligne</button>
-<details class="new-ingredient"><summary>Il manque un ingrédient ?</summary><div class="form-grid"><label>Nom<input id="new-name" maxlength="80"></label><label>Unité<select id="new-unit"><option>g</option><option>ml</option><option>pièce</option></select></label><label>Quantité par paquet<input id="new-pack" type="number" min=".1" step="any" value="500"></label><label>Prix minimum du paquet en € (facultatif)<input id="new-price" type="number" min="0" max="10000" step=".01" placeholder="Ex. 1,50"></label><label>Prix maximum du paquet en € (facultatif)<input id="new-price-max" type="number" min="0" max="10000" step=".01" placeholder="Ex. 3,00"></label><label>Rayon<select id="new-aisle"><option>Épicerie</option><option>Frais</option><option>Viande</option><option>Fruits et légumes</option><option>Surgelés</option><option>Placard</option></select></label></div><button type="button" id="create-ingredient" class="secondary">Créer l’ingrédient</button></details>
+<h3>Articles de la recette</h3><p class="fine">Choisis dans ton catalogue commun, puis indique la quantité approximative pour 4 portions. Les courses regroupent les quantités et calculent le prix des paquets à acheter.</p><div id="ingredient-rows"></div><button type="button" class="text-btn" id="add-row">+ Ajouter une ligne</button>
+<details class="new-ingredient"><summary>+ Ajouter un article au catalogue</summary><div class="form-grid"><label>Nom de l’article<input id="new-name" maxlength="80"></label><label>Unité<select id="new-unit"><option>g</option><option>ml</option><option>pièce</option></select></label><label>Quantité du paquet de référence<input id="new-pack" type="number" min=".1" step="any" value="500"></label><label>Prix minimum du paquet en € (facultatif)<input id="new-price" type="number" min="0" max="10000" step=".01" placeholder="Ex. 1,50"></label><label>Prix maximum du paquet en € (facultatif)<input id="new-price-max" type="number" min="0" max="10000" step=".01" placeholder="Ex. 3,00"></label><label>Rayon<select id="new-aisle"><option>Épicerie</option><option>Frais</option><option>Viande</option><option>Fruits et légumes</option><option>Surgelés</option><option>Placard</option></select></label></div><button type="button" id="create-ingredient" class="secondary">Ajouter au catalogue</button></details>
 <label>Préparation (facultatif), une étape par ligne<textarea id="recipe-steps" rows="5" maxlength="6000"></textarea></label>
 <div class="dialog-actions"><button class="primary" type="submit">Enregistrer la recette</button><button class="text-btn" type="button" data-close="edit-dialog">Annuler</button></div>
 </form></dialog>
@@ -168,9 +168,13 @@ function openRecipe(id){
  $('#recipe-dialog').showModal();
 }
 function options(selected){return Object.values(state.ingredients).sort((a,b)=>a.name.localeCompare(b.name,'fr')).map(i=>'<option value="'+i.id+'" '+(i.id===selected?'selected':'')+'>'+esc(i.name)+'</option>').join('');}
+function articleInfo(id){
+ const i=state.ingredients[id];
+ return esc(i.name)+' · paquet de '+amount(i.pack,i.unit)+' · '+(i.priceUnknown?'prix à renseigner':range(i.price,i.priceMax))+' · '+(i.status==='observed'&&i.maxStatus==='observed'?'repères E.Leclerc':i.status==='custom'?'tes prix indicatifs':'repères et estimations');
+}
 function addRow(id='pates',qty=100){
  const row=document.createElement('div');row.className='ingredient-row';
- row.innerHTML='<select aria-label="Ingrédient" required>'+options(id)+'</select><input aria-label="Quantité pour quatre portions" type="number" step="any" min=".1" max="100000" value="'+qty+'" required><span class="unit">'+esc(state.ingredients[id]?.unit||'g')+'</span><button type="button" class="remove-row" aria-label="Retirer cet ingrédient">×</button>';
+ row.innerHTML='<select aria-label="Article du catalogue" required>'+options(id)+'</select><input aria-label="Quantité approximative pour quatre portions" type="number" step="any" min=".1" max="100000" value="'+qty+'" required><span class="unit">'+esc(state.ingredients[id]?.unit||'g')+'</span><button type="button" class="remove-row" aria-label="Retirer cet article">×</button><small class="article-info" style="grid-column:1/-1;color:var(--muted);font-size:10px">'+articleInfo(id)+'</small>';
  $('#ingredient-rows').append(row);
 }
 function editRecipe(id=null){
@@ -194,10 +198,12 @@ function newIngredient(){
  const name=$('#new-name').value.trim(),pack=Number($('#new-pack').value),price=Number($('#new-price').value),priceMax=Number($('#new-price-max').value||$('#new-price').value);
  const priceUnknown=!$('#new-price').value&&!$('#new-price-max').value;
  if(!name||name.length>80||!finite(pack,.1,100000)||!finite(price,0,10000)||!finite(priceMax,price,10000))return toast('Ajoute un nom, une quantité et un prix valides.');
+ const existing=Object.values(state.ingredients).find(i=>i.name.toLocaleLowerCase('fr')===name.toLocaleLowerCase('fr'));
+ if(existing){addRow(existing.id,pack);$('.new-ingredient').open=false;return toast('Cet article est déjà dans ton catalogue. Il a été ajouté à la recette.');}
  const id=uid(),aisle=$('#new-aisle').value;
  state.ingredients[id]={id,name,priceUnknown,unit:$('#new-unit').value,pack,price,priceMax,maxStatus:'custom',maxSource:'',maxLabel:'Option plus chère indicative',aisle,brand:'',source:'',status:'custom',date:'',staple:aisle==='Placard'};
  $$('.ingredient-row select').forEach(s=>{const value=s.value;s.innerHTML=options(value);});
- addRow(id,pack);save();$('#new-name').value='';$('#new-price').value='';$('#new-price-max').value='';$('.new-ingredient').open=false;toast('Ingrédient ajouté à ta recette.');
+ addRow(id,pack);save();$('#new-name').value='';$('#new-price').value='';$('#new-price-max').value='';$('.new-ingredient').open=false;toast('Article enregistré dans le catalogue et ajouté à la recette.');
 }
 function shoppingText(){
  const list=shopping();let text='MA SEMAINE À TABLE\n'+chosen().map(r=>r.name+' (4 portions)').join('\n')+'\n';
@@ -232,7 +238,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('change',e=>{
  const el=e.target;
- if(el.matches('.ingredient-row select'))el.closest('.ingredient-row').querySelector('.unit').textContent=state.ingredients[el.value].unit;
+ if(el.matches('.ingredient-row select')){const row=el.closest('.ingredient-row');row.querySelector('.unit').textContent=state.ingredients[el.value].unit;row.querySelector('.article-info').innerHTML=articleInfo(el.value);}
  if(el.dataset.check){state.checked[el.dataset.check]=el.checked;save();renderShopping();}
  if(el.dataset.brand){state.ingredients[el.dataset.brand].brand=el.value.trim().slice(0,100);state.ingredients[el.dataset.brand].status='custom';save();render();toast('Marque mise à jour. Pense à ajuster le paquet et son prix.');}
  if(el.dataset.pack){const value=Number(el.value);if(el.value===''||!finite(value,.1,100000)){el.value=state.ingredients[el.dataset.pack].pack;return toast('Quantité de paquet invalide.');}const item=state.ingredients[el.dataset.pack],factor=value/item.pack;item.price*=factor;item.priceMax*=factor;item.pack=value;item.maxStatus='custom';state.ingredients[el.dataset.pack].status='custom';save();render();toast('Format du paquet mis à jour.');}
