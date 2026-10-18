@@ -54,6 +54,7 @@ dialog{border:3px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(-
 .bonus-picker{margin:30px 0;padding:20px;border:2px solid var(--ink);border-radius:16px;background:var(--soft)}.bonus-picker p{font-size:13px}.bonus-picker button{margin:6px 4px 6px 0;max-width:100%;overflow-wrap:anywhere}
 .base-control{margin:4px 0 12px;font-size:12px}.base-control button{border:2px solid var(--ink);border-radius:8px;padding:6px 12px;margin:3px;background:var(--white)}.base-control button[aria-pressed=true]{background:var(--olive);color:white}.base-control small{display:block;font-size:10px;margin-top:4px}
 
+.dish.octo-decoy{background:#decaff!important}.dish.octo-decoy h3{color:#7124b5;text-shadow:2px 2px 0 white;letter-spacing:2px}
 .dish.drawing{animation:slot-wiggle .14s ease-in-out infinite alternate}
 .dish.drawing h3{animation:slot-name .19s ease-in-out infinite}
 .dish.draw-land{animation:slot-land .25s ease-out both}
@@ -199,11 +200,11 @@ function animateDraw(){
  cards.forEach((card,index)=>{
  const title=$('h3',card),final=title.textContent;
  const pool=state.recipes.filter(r=>r.category===index).map(r=>r.name);
- const start=performance.now(),duration=740+index*270;
+ let spin=0;const duration=740+index*270;
  card.classList.add('drawing');title.setAttribute('aria-hidden','true');
- const interval=setInterval(()=>{title.textContent=pool[Math.floor(Math.random()*pool.length)]||final},95);
+ const interval=setInterval(()=>{const octo=(spin+++index)%4===1;title.textContent=octo?'OCTO':pool[Math.floor(Math.random()*pool.length)]||final;card.classList.toggle('octo-decoy',octo);},95);
  setTimeout(()=>{
- clearInterval(interval);title.textContent=final;title.removeAttribute('aria-hidden');card.classList.remove('drawing');
+ clearInterval(interval);title.textContent=final;title.removeAttribute('aria-hidden');card.classList.remove('drawing','octo-decoy');
  card.classList.add('draw-land');setTimeout(()=>card.classList.remove('draw-land'),250);
  },duration);
  });
