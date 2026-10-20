@@ -153,13 +153,14 @@ body:has(#shopping:not([hidden])) .recipe-fab{display:none}
 /* Original marker drawings by Paul, image processing only. */
 .paul-icon{display:inline-block;width:24px;height:24px;object-fit:contain;vertical-align:middle;flex-shrink:0;pointer-events:none}
 .paul-icon.control{width:26px;height:26px}.paul-icon.food{width:36px;height:36px;margin-right:6px}.paul-icon.cart{width:23px;height:23px;margin-right:3px}
-button .paul-icon:not(:only-child){margin-right:4px}.ingredient-star .paul-icon{width:23px;height:23px}.ingredient-star[aria-pressed=false] .paul-icon,.favorite-toggle[aria-pressed=false] .paul-icon{opacity:.28}.ingredient-star[aria-pressed=true] .paul-icon,.favorite-toggle[aria-pressed=true] .paul-icon{opacity:1}
+button .paul-icon:not(:only-child){margin-right:4px}
 .primary .paul-icon{filter:invert(1)}.recipe-fab .paul-icon{width:32px;height:32px;margin:0!important}
 #shopping .shopping-check span,#shopping .shopping-check input:checked+span,#shopping .covered:not(.checked) .shopping-check span{background:transparent;border:0;border-radius:0;width:36px;height:36px;color:inherit}
 #shopping .shopping-check .paul-icon{width:36px;height:36px;margin:0}.check-on{display:none!important}#shopping .shopping-check input:checked+span .check-off{display:none}#shopping .shopping-check input:checked+span .check-on{display:inline-block!important}
-.grocery-doodles{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;user-select:none}.grocery-doodles img{position:absolute;object-fit:contain;width:110px;height:130px;opacity:.035}.grocery-doodles img:nth-child(1){left:1%;top:17%;transform:rotate(-13deg)}.grocery-doodles img:nth-child(2){right:1%;top:39%;transform:rotate(12deg);width:95px}.grocery-doodles img:nth-child(3){left:3%;top:70%;transform:rotate(17deg);width:90px}.grocery-doodles img:nth-child(4){left:39%;top:1%;transform:rotate(-8deg);width:85px}.grocery-doodles img:nth-child(5){right:20%;top:83%;transform:rotate(-18deg);width:80px}
+.grocery-doodles{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;user-select:none}.grocery-doodles img{position:absolute;object-fit:contain;width:170px;height:190px;opacity:.16}.grocery-doodles img:nth-child(1){left:1%;top:14%;transform:rotate(-13deg)}.grocery-doodles img:nth-child(2){right:1%;top:39%;transform:rotate(12deg);width:150px}.grocery-doodles img:nth-child(3){left:3%;top:72%;transform:rotate(17deg);width:150px}.grocery-doodles img:nth-child(4){left:47%;top:7%;transform:rotate(-8deg);width:130px}.grocery-doodles img:nth-child(5){right:17%;top:81%;transform:rotate(-18deg);width:130px}
 body>.top,body>main{position:relative;z-index:1}#toast{z-index:10}
-@media(max-width:700px){.grocery-doodles img{opacity:.027;width:82px;height:100px}.grocery-doodles img:nth-child(1){left:-13px;top:13%}.grocery-doodles img:nth-child(2){right:-12px;top:54%;width:75px}.grocery-doodles img:nth-child(3){left:8%;top:86%;width:70px}.grocery-doodles img:nth-child(n+4){display:none}.paul-icon.food{width:32px;height:32px}}
+@media(max-width:700px){.grocery-doodles img{opacity:.15;width:138px;height:155px}.grocery-doodles img:nth-child(1){left:-34px;top:15%}.grocery-doodles img:nth-child(2){right:-22px;top:38%;width:126px}.grocery-doodles img:nth-child(3){left:-30px;top:70%;width:130px}.grocery-doodles img:nth-child(4){left:auto;right:8px;top:12%;width:105px;height:95px}.grocery-doodles img:nth-child(5){right:-22px;top:88%;width:115px;height:120px}.paul-icon.food{width:32px;height:32px}}
+.slot-tile .paul-icon{width:78px;height:78px;margin:0!important;object-fit:contain}.slot-tile.slot-result{font-size:clamp(11px,2.9vw,18px);font-weight:700}.slot-window.slot-stop{border-color:#201c25}
 </style>
 </head>
 <body>
@@ -360,11 +361,19 @@ function animateDraw(){
  const cards=$$('#week .cards .dish').slice(0,results.length);cards.forEach(c=>c.classList.add('await-draw'));
  results.forEach((r,index)=>{
  const windowEl=document.createElement('div');windowEl.className='slot-window';const strip=document.createElement('div');strip.className='slot-strip';
- const pool=state.recipes.filter(x=>x.category===r.category);
- for(let j=0;j<15;j++){const tile=document.createElement('div');const decoy=j<14&&j%4===1;tile.className='slot-tile'+(decoy?' slot-octo':'');tile.textContent=j===14?dishName(r):decoy?'OCTO':pool[j%pool.length]?.name||r.name;strip.append(tile);}
+ // Reels are drawings only until each one lands. The last tile also stays a
+ // drawing while it scrolls into view, so no chosen recipe leaks early.
+ const symbols=['burger','pasta','rice','noodles','bonus'];
+ for(let j=0;j<15;j++){const tile=document.createElement('div');tile.className='slot-tile';tile.innerHTML=paulIcon(symbols[(j+index*2)%symbols.length],'slot-symbol');strip.append(tile);}
  windowEl.append(strip);overlay.querySelector('.slot-windows').append(windowEl);
  const motion=strip.animate([{transform:'translateY(0)'},{transform:'translateY(-1400px)'}],{duration:1050+index*180,delay:180,easing:'cubic-bezier(.12,.55,.22,1)',fill:'forwards'});
- motion.finished.then(()=>{windowEl.classList.add('slot-stop');});
+ motion.finished.then(()=>{
+ if(!overlay.isConnected)return;
+ const landed=strip.lastElementChild;landed.textContent=dishName(r);landed.classList.add('slot-result');windowEl.classList.add('slot-stop');
+ cards[index]?.classList.remove('await-draw');
+ // The visual machine is decorative; announce only the actual landed choices.
+ overlay.setAttribute('aria-label','Recette '+(index+1)+' sur '+results.length+' : '+dishName(r)+(index===results.length-1?' · Tirage terminé.':' · Tirage en cours.'));
+ }).catch(()=>{});
  });
  const dismissAt=180+1050+(results.length-1)*180+280;
  setTimeout(()=>overlay.classList.add('slot-dismiss'),dismissAt);
@@ -399,7 +408,7 @@ function recipePrices(r){
  return '<div class="recipe-cost"><strong>'+range(cost(r),cost(r,true))+'</strong> utilisés pour '+servings(r)+(r.category===4?' portion'+(servings(r)>1?'s':'')+' fraîche'+(servings(r)>1?'s':''):' tupperware')+'<br><small>'+range(cost(r)/servings(r),cost(r,true)/servings(r))+' / portion</small><br><span>À acheter · '+range(packs(false),packs(true))+'</span><small>Paquets entiers, stock déduit · recette seule</small>'+(unknown?'<small>Budget partiel · prix manquants</small>':'<small>Fourchettes indicatives du catalogue</small>')+'</div>';
 }
 function recipeQuantities(r){return '<ul class="tile-ingredients">'+linesFor(r).map(l=>'<li>'+esc(state.ingredients[l.id].name)+' <strong>'+amount(l.qty,state.ingredients[l.id].unit)+'</strong></li>').join('')+'</ul>';}
-function favoriteButton(r){return '<button class="favorite-toggle" data-favorite="'+r.id+'" aria-pressed="'+favorite(r)+'" aria-label="'+(favorite(r)?'Retirer des favoris ':'Ajouter aux favoris ')+esc(dishName(r))+'">'+paulIcon('star','control')+'</button>';}
+function favoriteButton(r){return '<button class="favorite-toggle" data-favorite="'+r.id+'" aria-pressed="'+favorite(r)+'" aria-label="'+(favorite(r)?'Retirer des favoris ':'Ajouter aux favoris ')+esc(dishName(r))+'">'+(favorite(r)?'⭐':'☆')+'</button>';}
 function renderRecipes(){
  $('#count').textContent=state.recipes.length;
  $('#recipes').innerHTML='<div class="section-top"><div><h2>Les recettes qui sauvent</h2><p>'+state.recipes.length+' idées faciles · batch pour 4, plaisir pour 1 ou 2</p></div><button class="primary" id="new-recipe">'+paulIcon('plus','control')+'Ajouter une recette</button></div><div class="filters" aria-label="Filtrer les recettes">'+['Toutes',...CATEGORIES].map((name,i)=>'<button class="'+(filter===(i===0?'all':String(i-1))?'active':'')+'" data-filter="'+(i===0?'all':i-1)+'">'+name+'</button>').join('')+'</div><div class="recipe-list">'+state.recipes.filter(r=>r.category!==3&&(filter==='all'||String(r.category)===filter)).map(r=>'<article class="recipe-row"><button data-view="'+r.id+'"><h3>'+foodIcon(r)+esc(dishName(r))+'</h3><p>'+CATEGORIES[r.category]+' · '+r.minutes+' min</p></button><span class="row-end">'+range(cost(r)/servings(r),cost(r,true)/servings(r))+'<small> / part</small></span><button class="quick-delete" data-delete="'+r.id+'" aria-label="Supprimer '+esc(dishName(r))+'" title="Supprimer la recette">'+paulIcon('trash','control')+'</button></article>').join('')+'</div>'+((filter==='all'||filter==='3')?'<section class="recipe-bonus-section"><h2>Bonus · bouillons & extras</h2><p class="fine">Facultatifs, en dehors des quatre plats du tirage.</p><div class="cards bonus-cards">'+state.recipes.filter(r=>r.category===3).map(bonusCard).join('')+'</div><button class="secondary" id="new-bonus">'+paulIcon('plus','control')+'Créer une recette bonus</button></section>':'')+(state.recipes.length?'':'<div class="empty">Ton carnet est vide. Ajoute ta première recette.</div>');
@@ -504,7 +513,7 @@ function ingredientSuggestion(id){
 function renderPicker(){
  const target=$('#ingredient-picker');if(!target)return;
  const fav=state.ingredientFavorites||[],items=Object.values(state.ingredients).filter(i=>normalizeArticle(i.name).includes(normalizeArticle($('#picker-search')?.value||'')));
- const tile=i=>'<div class="ingredient-tile"><button type="button" data-pick-ingredient="'+i.id+'" aria-label="Ajouter '+esc(i.name)+'"><span aria-hidden="true">'+esc(i.icon||['🍚','🥩','🥕','🧀','🥫','🥣','🍎','🥫','🍲','🌶️','🫙','❄️'][ingredientGroup(i)])+'</span><strong>'+esc(i.name)+'</strong><small>'+amount(ingredientSuggestion(i.id),i.unit)+'</small></button><button type="button" class="ingredient-star" data-ingredient-star="'+i.id+'" aria-pressed="'+fav.includes(i.id)+'" aria-label="Favori '+esc(i.name)+'">'+paulIcon('star','control')+'</button></div>';
+ const tile=i=>'<div class="ingredient-tile"><button type="button" data-pick-ingredient="'+i.id+'" aria-label="Ajouter '+esc(i.name)+'"><span aria-hidden="true">'+esc(i.icon||['🍚','🥩','🥕','🧀','🥫','🥣','🍎','🥫','🍲','🌶️','🫙','❄️'][ingredientGroup(i)])+'</span><strong>'+esc(i.name)+'</strong><small>'+amount(ingredientSuggestion(i.id),i.unit)+'</small></button><button type="button" class="ingredient-star" data-ingredient-star="'+i.id+'" aria-pressed="'+fav.includes(i.id)+'" aria-label="Favori '+esc(i.name)+'">'+(fav.includes(i.id)?'★':'☆')+'</button></div>';
  target.innerHTML='<p class="fine">Touche un article pour l’ajouter. Quantités indicatives, à ajuster pour tes portions ci-dessous. ★ garde tes articles favoris en tête.</p>'+(fav.length?'<h4>★ Tes favoris</h4><div class="ingredient-grid">'+items.filter(i=>fav.includes(i.id)).map(tile).join('')+'</div>':'')+INGREDIENT_GROUPS.map((name,index)=>{const list=items.filter(i=>ingredientGroup(i)===index).sort((a,b)=>Number(fav.includes(b.id))-Number(fav.includes(a.id))||a.name.localeCompare(b.name,'fr'));return list.length?'<details class="picker-group" '+(index===0?'open':'')+'><summary>'+name+' · '+list.length+'</summary><div class="ingredient-grid">'+list.map(tile).join('')+'</div></details>':'';}).join('');
 }
 function updateDraft(){
