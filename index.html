@@ -211,7 +211,16 @@ function migratePleasure(raw){
   if(!r||signature(r)!==signature(original))continue;
   for(const line of r.ingredients)if(['boeuf','dinde','poulet'].includes(line.id)&&line.qty>=400)line.qty=300;
  }
- for(const r of window.SEED.recipes.filter(r=>r.category===4))if(!raw.recipes.some(x=>x.id===r.id))raw.recipes.push(structuredClone(r));
+ for(const original of window.SEED.recipes.filter(r=>r.category===4)){
+  if(raw.recipes.some(x=>x.id===original.id))continue;
+  const r=structuredClone(original);
+  for(const line of r.ingredients)if(!raw.ingredients[line.id]){
+   const seed=window.SEED.ingredients[line.id];
+   const match=Object.values(raw.ingredients).find(i=>normalizeArticle(i.name)===normalizeArticle(seed.name)&&i.unit===seed.unit);
+   if(match)line.id=match.id;else raw.ingredients[line.id]=structuredClone(seed);
+  }
+  raw.recipes.push(r);
+ }
  // Keep the existing three choices and all optional bonuses when completing an old menu.
  if(raw.week.length&&!raw.week.some(id=>raw.recipes.find(r=>r.id===id)?.category===4)){
   const pleasure=raw.recipes.find(r=>r.category===4);if(pleasure)raw.week.push(pleasure.id);
