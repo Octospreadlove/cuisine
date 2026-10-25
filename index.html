@@ -493,7 +493,7 @@ function addExtra(event){
  if(i&&i.unit!==unit)return toast('Utilise l’unité du catalogue pour cet article.');
  if(!i){if(Object.keys(state.ingredients).length>=500)return toast('Catalogue plein.');const id=uid();i={id,name,unit,pack:qty,price:priceText===''?0:price,priceMax:priceText===''?0:price,aisle:'Épicerie',status:'custom',maxStatus:'custom',priceUnknown:priceText==='',staple:false};state.ingredients[id]=i;}
  else if(priceText!==''){const perPack=price/qty*i.pack;if(!finite(perPack,0,10000))return toast('Prix par paquet trop élevé.');i.price=perPack;i.priceMax=perPack;i.priceUnknown=false;i.status='custom';i.maxStatus='custom';}
- state.extras=state.extras||[];if(!editKey&&state.extras.length>=100)return toast('100 extras maximum.');const existing=state.extras.findIndex(x=>x.key===editKey);if(existing>=0)state.extras[existing]={key:editKey,id:i.id,qty};else state.extras.push({key:uid(),id:i.id,qty});state.checked={};save();render();toast('Extra ajouté aux courses.');
+ state.extras=state.extras||[];if(!editKey&&state.extras.length>=100)return toast('100 extras maximum.');const existing=state.extras.findIndex(x=>x.key===editKey);const oldId=existing>=0?state.extras[existing].id:null;if(existing>=0)state.extras[existing]={key:editKey,id:i.id,qty};else state.extras.push({key:uid(),id:i.id,qty});if(state.checked){delete state.checked[i.id];if(oldId)delete state.checked[oldId];}save();render();toast('Extra ajouté aux courses.');
 }
 document.addEventListener('submit',e=>{if(e.target.id==='extra-form')addExtra(e);});
 document.addEventListener('input',e=>{
