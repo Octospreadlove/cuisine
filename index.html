@@ -174,7 +174,16 @@ body>.top,body>main{position:relative;z-index:1}#toast{z-index:10}
 #recipes .section-top>div{grid-column:1/-1}
 #recipes .section-top>#new-recipe,#recipes .section-top>#open-import{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:52px;width:100%;margin:0;padding:10px 8px;font-size:12px;line-height:1.2;text-align:center;white-space:normal}
 #recipes .section-top>#new-recipe .paul-icon{width:22px;height:22px;margin:0}
-body:has(#recipes:not([hidden])) .recipe-fab{display:none}</style>
+body:has(#recipes:not([hidden])) .recipe-fab{display:none}
+.recipe-row .quick-share{right:64px;background:#fffefa}
+.tile-actions .quick-share{position:static;margin-left:auto;margin-right:8px;width:44px}
+.tile-actions .quick-delete{width:44px}
+.quick-share .paul-icon{width:24px;height:24px;margin:0}
+.quick-share:hover{background:#e4d8ff}
+.recipe-row{flex-wrap:wrap;padding-right:122px}
+.recipe-row>button[data-view]{flex:1 1 100%;min-width:0}
+.recipe-row>.row-end{flex:1 1 100%;text-align:left;white-space:normal}
+</style>
 </head>
 <body>
 <div class="food-wallpaper" aria-hidden="true"></div>
@@ -948,8 +957,13 @@ document.addEventListener('click',async e=>{
  if(b.id==='imp-add')return confirmAdd();});
 let lastText='';
 document.addEventListener('change',e=>{if(e.target.id==='imp-cat'&&pending){const v=e.target.value;if(v!=='')showPreview(pending,pendingSource,Number(v));}});
+/* SHARE_ICON: icône provisoire (flèche). Remplaçable: déposer le dessin de Paul dans assets/share.svg (ou .png, changer SHARE_ICON_SRC). */
+const SHARE_ICON_SRC='assets/share.svg';
+const SHARE_ICON=window.SHARE_ICON='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#201c25" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>');
+function shareIconImg(){return '<img class="paul-icon control" src="'+SHARE_ICON_SRC+'" onerror="this.onerror=null;this.src=SHARE_ICON" alt="" aria-hidden="true" draggable="false">';}
+function addQuickShare(root){$$('.quick-delete[data-delete]',root).forEach(d=>{if(d.previousElementSibling&&d.previousElementSibling.classList.contains('quick-share'))return;const r=recipe(d.dataset.delete);if(!r)return;const b=document.createElement('button');b.type='button';b.className='quick-delete quick-share';b.dataset.shareRecipe=r.id;b.setAttribute('aria-label','Partager '+dishName(r));b.title='Partager la recette';b.innerHTML=shareIconImg();d.before(b);});}
 const _renderRecipes=renderRecipes;
-renderRecipes=function(){_renderRecipes();const top=$('#recipes .section-top');if(top&&!$('[data-open-import]',top)){const n=$('#new-recipe',top);const b=document.createElement('button');b.className='secondary';b.dataset.openImport='';b.id='open-import';b.textContent='Importer une recette';n.after(b);}};
+renderRecipes=function(){_renderRecipes();addQuickShare($('#recipes')||document);const top=$('#recipes .section-top');if(top&&!$('[data-open-import]',top)){const n=$('#new-recipe',top);const b=document.createElement('button');b.className='secondary';b.dataset.openImport='';b.id='open-import';b.textContent='Importer une recette';n.after(b);}};
 const _openRecipe=openRecipe;
 openRecipe=function(id){_openRecipe(id);const r=recipe(id),a=$('#recipe-content .dialog-actions');if(r&&a&&!$('[data-share-recipe]',a)){const b=document.createElement('button');b.className='secondary';b.type='button';b.dataset.shareRecipe=r.id;b.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px;margin-right:6px"><path d="M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"/></svg>Partager';a.prepend(b);}};
 const ef=$('#recipe-form .dialog-head');if(ef&&!$('[data-open-import]',$('#recipe-form'))){ef.insertAdjacentHTML('afterend','<p class="fine share-import-hint">Tu as déjà ta recette sous forme de texte ? <button type="button" class="text-btn" data-open-import>Importer une recette</button></p>');}
